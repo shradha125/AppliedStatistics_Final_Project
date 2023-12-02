@@ -1,0 +1,198 @@
+---
+title: "AppliedStatistics_FinalProject"
+author: "Shradha Balasaheb Godse"
+date: "2023-12-02"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Factors Influencing Video Game Sales
+
+## Problem Statement
+
+In this project, by employing the statistical methodologies, we aim to extract meaningful insights from the dataset, uncover patterns, and contribute to a deeper understanding of the factors influencing video game sales in the market.
+
+The primary goal of this exploration is to delve into the correlations between various factors such as gaming platforms, genres, and publishers, and the resultant impact on video game sales. Furthermore, the dataset lends itself to hypothesis testing, allowing for the formulation and validation of hypotheses related to specific variables influencing global video game sales. Regression models will be developed to predict video game sales based on selected features, providing insights into the factors contributing significantly to a game's success.
+
+The analytical methods applied include descriptive statistics and exploratory data analysis (EDA) to understand the distribution of data, hypothesis testing to validate or reject hypotheses, and regression analysis to model the relationships between independent variables and the dependent variable (Global_Sales).
+
+## Contents
+
+  1. Introduction
+  2. Methodology
+  3. Data Analysis
+  4. Results and Conclusion
+  5. References
+  
+# 1. Introduction
+The dataset under consideration encompasses information on video games with sales exceeding 100,000 copies, providing a valuable repository for comprehensive statistical exploration. The dataset can be accessed here: https://www.kaggle.com/datasets/gregorut/videogamesales. The dataset includes a range of pertinent variables, such as the ranking of games, their titles, the platforms they are available on, release years, genres, and sales figures across different regions including North America (NA), Europe (EU), Japan (JP), and other territories. Additionally, the dataset features a cumulative "Global_Sales" variable, providing a holistic measure of a game's success on a global level.
+
+This dataset not only facilitates a deep understanding of the video game market but also allows for the extraction of actionable insights that can be invaluable for industry professionals, researchers, and enthusiasts alike. As we embark on this analytical journey, we aim to uncover hidden trends, identify influential factors, and contribute to a nuanced understanding of the dynamics within the global video game sales landscape.
+
+```{r}
+# Importing required libraries
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+
+vgsales = read.csv('vgsales.csv')
+cat("Read the first 6 rows of dataset\n"); head(vgsales)
+num_rows = nrow(vgsales)
+num_cols = ncol(vgsales)
+cat("Total number of rows in the dataset =", num_rows, "\n")
+cat("Total number of columns in the dataset =", num_cols, "\n")
+```
+### As a first step in the analysis, we should take a look at the variables in the dataset. This can be done using the str function.
+```{r}
+str(vgsales)
+```
+## Exploratory Data Analysis
+
+### Outlier Detection
+
+We will identify and analyze outliers in the dataset to understand if there are any exceptional cases or anomalies. We will also compute summary statistics (mean, median, range, standard deviation) for sales figures (NA_Sales, EU_Sales, JP_Sales, Other_Sales, Global_Sales) to understand the distribution of sales.
+
+```{r}
+summary(vgsales$NA_Sales)
+```
+
+```{r}
+summary(vgsales$EU_Sales)
+```
+
+```{r}
+summary(vgsales$JP_Sales)
+```
+
+```{r}
+summary(vgsales$Other_Sales)
+```
+
+```{r}
+summary(vgsales$Global_Sales)
+```
+
+## Data Cleaning and Preparation:
+
+We will first check for the missing values in the dataset.
+```{r}
+# Check for "N/A" values in the 'Publisher' column
+na_values_in_publisher <- sum(vgsales$Publisher == "N/A")
+
+# Display the count of "N/A" values in the 'Publisher' column
+print("N/A Values in 'Publisher' Column:")
+print(na_values_in_publisher)
+```
+
+There are 58 Null values in the Publisher column.
+
+```{r}
+# Check for "N/A" values in the 'Year' column
+na_values_in_year <- sum(vgsales$Year == "N/A")
+
+# Display the count of "N/A" values in the 'Year' column
+print("N/A Values in 'Year' Column:")
+print(na_values_in_year)
+```
+There are 271 Null values in the Year column.
+
+Hence, we will further check for the null values in all columns and drop these rows with null values.
+
+```{r}
+# Specify the columns you want to check for "N/A" values
+columns_to_check <- c("Rank", "Name", "Platform", "Year", "Genre", "Publisher", "NA_Sales", "EU_Sales", "JP_Sales", "Other_Sales", "Global_Sales")
+
+# Remove rows with "N/A" values in the specified columns
+vgsales <- vgsales %>%
+  filter_all(all_vars(!is.na(.))) %>%
+  filter_at(vars(columns_to_check), all_vars(. != "N/A"))
+
+# Check if there are any "N/A" values now
+na_count <- sum(is.na(vgsales) | vgsales == "N/A")
+print("Count of 'N/A' Values:")
+print(na_count)
+
+# Check the number of rows after removing "N/A" values
+num_rows <- nrow(vgsales)
+print("Number of Rows After Removal:")
+print(num_rows)
+
+```
+
+There are no missing values in the dataset. Further, we can check for the duplicate records. We will drop the duplicates if found.
+
+```{r}
+# Check for duplicates
+duplicate_rows = vgsales[duplicated(vgsales), ]
+print(duplicate_rows)
+```
+
+No duplicate records found.
+
+
+```{r}
+# Set the "Rank" column as row names (index)
+rownames(vgsales) <- vgsales$Rank
+
+# Remove the "Rank" column as it's now set as row names
+vgsales <- vgsales[, -1]
+
+# Print the modified dataset with "Rank" as the index
+print("\nModified Dataset with Rank as Index:")
+head(vgsales)
+```
+# 3. Data Analysis
+
+### Analyzing trends in global sales over the years. Identify years with significant changes in sales patterns.
+    
+```{r}
+# Convert 'Year' to numeric
+vgsales$Year <- as.numeric(vgsales$Year)
+
+# Time Series Analysis - Trends in Global Sales over the Years
+sales_by_year <- vgsales %>%
+  group_by(Year) %>%
+  summarise(Total_Global_Sales = sum(Global_Sales))
+
+# Visualize Time Series - Global Sales over the Years
+ggplot(sales_by_year, aes(x = Year, y = Total_Global_Sales)) +
+  geom_line() +
+  labs(title = "Global Sales Over the Years",
+       x = "Year",
+       y = "Total Global Sales") +
+  scale_x_continuous(breaks = unique(sales_by_year$Year)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+The Global Sales are highest in the year 2008. 
+We will further conduct a more granular analysis by examining the performance of specific genres or individual game releases during the identified years with significant changes. This may reveal which types of games contributed most to the observed trends.
+
+### Examine how sales vary for specific genres or platforms over time.
+
+```{r}
+# Time Series Analysis - Sales Variation for Specific Genres over the Years
+sales_by_genre <- vgsales %>%
+  group_by(Year, Genre) %>%
+  summarise(Total_Global_Sales = sum(Global_Sales))
+
+# Visualize Time Series - Sales Variation for Specific Genres
+ggplot(sales_by_genre, aes(x = as.numeric(Year), y = Total_Global_Sales, color = Genre)) +
+  geom_line() +
+  labs(title = "Sales Variation for Specific Genres Over the Years",
+       x = "Year",
+       y = "Total Global Sales",
+       color = "Genre")+
+       scale_x_continuous(breaks = unique(sales_by_year$Year)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+From the graph, it is clear that the Actions games have highest global sales in that year.
+
+
+
+
+
